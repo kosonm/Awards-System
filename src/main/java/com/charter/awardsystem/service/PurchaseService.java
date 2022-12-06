@@ -4,8 +4,6 @@ import com.charter.awardsystem.model.dto.AwardResponse;
 
 public interface PurchaseService {
 
-    AwardResponse calculateAllPoints(Long customerId);
-
-    AwardResponse calculatePointsByMonth(int monthNumber);
+    AwardResponse getAwardPointsByCustomerId(Long customerId);
 
 }

@@ -1,6 +1,8 @@
 package com.charter.awardsystem.service;
 
+import com.charter.awardsystem.exception.NoDataFoundException;
 import com.charter.awardsystem.model.Purchase;
+import com.charter.awardsystem.model.constant.AwardConstants;
 import com.charter.awardsystem.model.dto.AwardResponse;
 import com.charter.awardsystem.repository.PurchaseRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +11,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Month;
 import java.util.List;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,36 +24,48 @@ public class PurchaseServiceImpl implements PurchaseService {
 
     private final PurchaseRepository purchaseRepository;
 
-
     @Override
-    public AwardResponse calculateAllPoints(Long customerId) {
+    public AwardResponse getAwardPointsByCustomerId(Long customerId) {
 
-        LOGGER.info("Method calculateAllPoints started...");
+        LOGGER.info("Method getRewardPointsByCustomerId started...");
         List<Purchase> purchasesByCustomerId = purchaseRepository.getPurchasesByCustomerId(customerId);
 
-        Integer totalPoints = purchasesByCustomerId
+        if (purchasesByCustomerId.isEmpty()) {
+            throw new NoDataFoundException("No purchases found for customer with id: " + customerId);
+        }
+
+        TreeMap<Month, Long> pointsByMonth = purchasesByCustomerId
                 .stream()
-                .map(Purchase::getAmount)
-                .map(amount -> doOperations(amount))
-                .collect(Collectors.summingInt(Integer::intValue));
+                .collect(
+                        Collectors.groupingBy(
+                                purchase -> purchase.getDate().getMonth(),
+                                TreeMap::new,
+                                Collectors.summingLong(purchase -> calculatePoints(purchase.getAmount()))
+                        )
+                );
+
+        long totalPoints = pointsByMonth.values()
+                .stream()
+                .mapToLong(Long::longValue)
+                .sum();
+
 
         return AwardResponse.builder()
                 .customerId(customerId)
-                .rewardPoints(totalPoints)
+                .totalPoints(totalPoints)
+                .pointsByMonth(pointsByMonth)
                 .build();
     }
 
-    @Override
-    public AwardResponse calculatePointsByMonth(int monthNumber) {
-        return null;
-    }
+    private Long calculatePoints(BigDecimal amount) {
+        long roundedAmount = amount.longValue();
 
-    private int doOperations(BigDecimal amount) {
-        int intValue = amount.intValue(); // TODO: change var name
-
-
-
-
-        return 0;
+        if (roundedAmount > AwardConstants.hundredDollarLimit) {
+            return (roundedAmount - AwardConstants.hundredDollarLimit) * 2 + AwardConstants.fiftyDollarLimit;
+        }
+        if (roundedAmount > AwardConstants.fiftyDollarLimit) {
+            return roundedAmount - AwardConstants.fiftyDollarLimit;
+        }
+        return 0L;
     }
 }
