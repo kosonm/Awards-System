@@ -1,12 +1,14 @@
 package com.charter.awardsystem.model.dto;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.time.Month;
 import java.util.TreeMap;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class AwardResponse {
 
